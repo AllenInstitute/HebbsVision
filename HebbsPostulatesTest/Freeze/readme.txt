@@ -1,0 +1,2 @@
+This directory contains the frozen .ipynb notebook containing the frozen statistical tests of hypotheses derived from Hebb's published works, and other major works interpreting or expanding Hebb's theories in contemporary contexts.
+It also contains subdirectories for output when the notebook is run, and an installer .whl file for the internal data management library, frozen at the version used when these tests were run.
