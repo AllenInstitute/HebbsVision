@@ -1,0 +1,8 @@
+v1dd_cell_annos_240705.feather filter=lfs diff=lfs merge=lfs -text
+axonal_synapses_log_likelihoods.feather filter=lfs diff=lfs merge=lfs -text
+dendritic_synapses_log_likelihoods.feather filter=lfs diff=lfs merge=lfs -text
+modified_synapses_v1dd_742_combined_incl_trafo_240524.feather filter=lfs diff=lfs merge=lfs -text
+modified_v1dd_cell_annos_240606.feather filter=lfs diff=lfs merge=lfs -text
+modified_v1dd_proofread_cell_annos_240606.feather filter=lfs diff=lfs merge=lfs -text
+synapses_v1dd_742_combined_incl_trafo_240524.feather filter=lfs diff=lfs merge=lfs -text
+v1dd_cell_annos_240606.feather filter=lfs diff=lfs merge=lfs -text
