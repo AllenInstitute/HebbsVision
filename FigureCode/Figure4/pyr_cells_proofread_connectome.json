@@ -1,0 +1,11 @@
+{
+    "dataset": "v1dd",
+    "run_descriptor": "pyramidal_cells_proofread_connectome",
+    "use_functional_data": true,
+    "use_structural_data": true,
+    "use_sgc_assemblies": true,
+    "structural_data_version": 742,
+    "proofread_to_proofread": true,
+    "calc_connectomes": true,
+    "pyramidal_only": true
+}
