@@ -5,7 +5,7 @@ Execute `git clone https://github.com/AllenInstitute/HebbsVision`, or otherwise 
 ## Setup Part 2: Environment Setup
 First, ensure that anaconda (conda) is installed on your system.
 Then, to create the environment and install the conda and pip packages, at a command prompt execute `conda env create -n HebbsVision -f conda_files.yaml`
-In the case of failure installing NeuroAnalysisTools, due to the lack of `requirements.txt`, you must create the environment first then download NeuroAnalysisTools from `https://github.com/zhuangjun1981/NeuroAnalysisTools`.  Once it exists in a local directory, you can install it locally from pip with `pip install -e ./<path_to_NeuroAnalysisTools>.`  The same workaround can be employed with V1DD-Physiology if a similar error occurs.
+In the case of failure installing NeuroAnalysisTools, due to the lack of `requirements.txt`, you must create the environment first then download NeuroAnalysisTools from `https://github.com/zhuangjun1981/NeuroAnalysisTools`.  Once it exists in a local directory, you can install it locally from pip with `pip install -e ./<path_to_NeuroAnalysisTools>.`  The same workaround can be employed with V1DD-Physiology (`https://github.com/AllenInstitute/v1dd_physiology`) if a similar error occurs.
 
 The LSMM library must be installed via a local wheel file at the moment, and the .whl is included in the root of the repository.  Install it with `pip install lsmm_data-0.1.2-py2.py3-none-any.whl`
 
