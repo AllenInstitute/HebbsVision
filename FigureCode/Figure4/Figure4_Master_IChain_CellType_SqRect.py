@@ -63,9 +63,9 @@ random.seed(747)
 from lsmm_data import LSMMData
 # import lsmm_data.LSMMData
 
-scan_session_affinity_filestring = '1_3_4_742'  # Edit this for different versions
+# scan_session_affinity_filestring = '1_3_4_742'  # Edit this for different versions
 scan_session_affinity_filestring = '1_3_4_974'  # Edit this for different versions
-scan_session_affinity_filestring = '1_3_4_1196'  # Edit this for different versions
+# scan_session_affinity_filestring = '1_3_4_1196'  # Edit this for different versions
 
 # %%
 # Set-Wise Comparison Functions: Determining the intersection of assembly assignment of two pyramidal cells 
@@ -1123,11 +1123,11 @@ with open(f'FigureCode/Figure4/all_cells_proofread_connectome_{scan_session_affi
     
 for to_proofread in [True, False]:
     if to_proofread:
-        output_string = "RectChain"
+        output_string = "SquareChain"
         loaded_json['proofread_to_proofread'] = True
 
     else:
-        output_string = "SquareChain"
+        output_string = "RectChain"
         loaded_json['proofread_to_proofread'] = False
     
     my_data = LSMMData.LSMMData(loaded_json)
