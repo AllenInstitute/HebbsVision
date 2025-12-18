@@ -64,6 +64,8 @@ from lsmm_data import LSMMData
 # import lsmm_data.LSMMData
 
 scan_session_affinity_filestring = '1_3_4_742'  # Edit this for different versions
+scan_session_affinity_filestring = '1_3_4_974'  # Edit this for different versions
+scan_session_affinity_filestring = '1_3_4_1196'  # Edit this for different versions
 
 # %%
 # Set-Wise Comparison Functions: Determining the intersection of assembly assignment of two pyramidal cells 
@@ -1175,8 +1177,8 @@ for to_proofread in [True, False]:
 
     ### Pool necessary Data
     chain_count_string_array = ['pyr_cell_2chain']
-    individual_assembly_indexes = [mappings_a['connectome_indexes_by_assembly'][f'A {i}'] for i in range(1,16)]
-    individual_post_assembly_indexes = [mappings_a['post_connectome_indexes_by_assembly'][f'A {i}'] for i in range(1,16)]
+    individual_assembly_indexes = [mappings_a['connectome_indexes_by_assembly'][f'A {i}'] for i in mappings_a['connectome_indexes_by_assembly'].keys() if i[0] == 'A']
+    individual_post_assembly_indexes = [mappings_a['post_connectome_indexes_by_assembly'][f'A {i}'] for i in mappings_a['post_connectome_indexes_by_assembly'].keys() if i[0] == 'A']
 
     coregistered_post_cell_indexes = mappings_a['assemblies_by_post_connectome_index'].keys()
     coregistered_cell_indexes = mappings_a['assemblies_by_connectome_index'].keys()
