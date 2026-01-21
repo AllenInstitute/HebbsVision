@@ -122,6 +122,9 @@ merged_inhibitory_contingency_table = None
 merged_W_chain_by_type = {type: {} for type in ['PTC', 'DTC', 'ITC', 'STC', 'PYR', 'INH']}
 merged_B_chain_by_type = {type: {} for type in ['PTC', 'DTC', 'ITC', 'STC', 'PYR', 'INH']}
 
+merged_W_chain_nonzero_pairwise_by_type = {}
+merged_B_chain_pairwise_by_type = {}
+
 merged_outdegree_centrality_by_grouped_membership = {'No A': [], 'All A': []}
 merged_indegree_centrality_by_grouped_membership = {'No A': [], 'All A': []}
 merged_closeness_centrality_by_grouped_membership = {'No A': [], 'All A': []}
@@ -144,7 +147,8 @@ for scan_session_affinity_filestring in scan_session_affinity_filestrings:
     # scan_session_affinity_filestring = '1_3_4_1196'  # Edit this for different versions
     # scan_session_affinity_filestring = '1_4_4_742'  # Edit this for different versions
 
-    
+    xz_centroid = (0.0,0.0) # in microns
+    xz_radius = 1000.00  # in microns
 
     # %%
     with open(f'./FigureCode/Figure4/pyr_cells_rectangular_connectome_{scan_session_affinity_filestring}.json') as f:
@@ -160,7 +164,6 @@ for scan_session_affinity_filestring in scan_session_affinity_filestrings:
     print(data_a.keys())
 
     print("Assemblies")
-
 
     # %% [markdown]
     # ## Monosynaptic Analysis on Pyramidal Cell Rectangular Connectome
@@ -624,7 +627,7 @@ for scan_session_affinity_filestring in scan_session_affinity_filestrings:
                     raise TypeError("Unsupported data type for group values. Expect dict or sequence.")
 
         if 'shared' not in comparison_dict or 'disjoint' not in comparison_dict:
-            raise KeyError("comparison_dict must contain 'shared' and 'disjoint' keys.")
+            raise KeyError(f"comparison_dict must contain 'shared' and 'disjoint' keys.  Contains: {list(comparison_dict.keys())}")
 
         shared_vals_raw = comparison_dict['shared']
         disjoint_vals_raw = comparison_dict['disjoint']
@@ -697,6 +700,22 @@ for scan_session_affinity_filestring in scan_session_affinity_filestrings:
     post_cell_table = data_a['structural']['post_cell'].copy()
     post_cell_table['connectome_index'] = post_cell_table.index
     synapse_table = data_a['structural']['synapse']
+
+    # ## Define Central Column
+    # print("Square Central Column:")
+    # print(cell_table.columns)
+    # xz_values = [(x,z) for x, z in zip(cell_table['pt_position_x_trafo'], cell_table['pt_position_z_trafo'])]
+    # # Find the centroid of the xz coordinates
+    # xz_array = np.array(xz_values)
+    # xz_centroid = np.mean(xz_array, axis=0)
+    # print(f"xz_centroid: {xz_centroid}")
+    # # Calculate distances from centroid
+    # distances = np.linalg.norm(xz_array - xz_centroid, axis=1)
+    # # Set the radius to the max distance
+    # print(f"Radius from centroid: {np.max(distances)}")
+    # xz_radius = np.max(distances) * 0.75
+    # # Select cells within the specified radius
+    
 
     # Establish seperate sets for the pre and post synaptic partnes
     # This is necessary as the set of connectome index of pre-synaptic cells do not 
@@ -1317,6 +1336,8 @@ for scan_session_affinity_filestring in scan_session_affinity_filestrings:
         produce_centrality_plot(merged_pyr_closeness_centrality_by_grouped_membership,
                                 closeness = True, save=True, figure_name=f'Closeness_Centrality_All_Merged{merged_filestring}')
 
+    
+
 
     # %% [markdown]
     # ## Higher-Order Conectivity Analysis: Chain Motifs
@@ -1333,16 +1354,15 @@ for scan_session_affinity_filestring in scan_session_affinity_filestrings:
     with open(f'FigureCode/Figure4/all_cells_rectangular_connectome_{scan_session_affinity_filestring}.json') as f:
         loaded_jsons.append(json.load(f))
 
-    for to_proofread in [False]:
-        if to_proofread:
-            output_string = "SquareChain"
+    for restricted_to_column in [False]:
+        if restricted_to_column:
+            output_string = "_ColumnRestrictedRect"
             loaded_json = loaded_jsons[0]
-            # loaded_json['proofread_to_proofread'] = True
 
         else:
-            output_string = "RectChain"
+            output_string = "_GaussianRestrictedRect"
             loaded_json = loaded_jsons[1]   
-            # loaded_json['proofread_to_proofread'] = False
+            # loaded_json['proofread_restricted_to_column'] = False
 
         print(f"Opening {output_string} Data")
         my_data = LSMMData.LSMMData(loaded_json)
@@ -1360,6 +1380,18 @@ for scan_session_affinity_filestring in scan_session_affinity_filestrings:
         synapse_table = data_a['structural']['synapse']
         # adjacency_matrix = square_data['structural']['binary_connectome']
         temp_graph = nx.DiGraph()
+
+        if restricted_to_column:
+            ## Define Central Column Mask
+            xz_values = post_cell_table['pt_position_x_trafo'], post_cell_table['pt_position_z_trafo']
+            xz_array = np.array(xz_values)
+            post_cell_distances = np.linalg.norm(xz_array.T - xz_centroid, axis=1) #array (num_cells, 2), xz centroid defined at the start of analysis, on the square connectome
+            # Radius defined then too
+            
+            # Select cells within the specified radius
+            allowed_post_cell_root_ids = post_cell_table[post_cell_distances <= xz_radius]['pt_root_id'].values
+        else:
+            allowed_post_cell_root_ids = post_cell_table['pt_root_id'].values
 
         # Reset all variables at the start of each iteration
             # Filter cell tables to only assembly cells
@@ -1395,7 +1427,8 @@ for scan_session_affinity_filestring in scan_session_affinity_filestrings:
         for i in range(rows):
             for j in range(cols):
                 if data_a['structural']['binary_connectome'][i, j] != 0:  # 0 means no edge
-                    temp_graph.add_edge(pre_cell_table.iloc[i]['pt_root_id'], post_cell_table.iloc[j]['pt_root_id'], weight=data_a['structural']['summed_size_connectome'][i, j])
+                    if post_index_to_root_id[j] in allowed_post_cell_root_ids:
+                        temp_graph.add_edge(pre_cell_table.iloc[i]['pt_root_id'], post_cell_table.iloc[j]['pt_root_id'], weight=data_a['structural']['summed_size_connectome'][i, j])
 
         # Motif Analysis with DotMotif: 2 Chain, All Pyr
         executor = GrandIsoExecutor(graph=temp_graph)
@@ -1522,7 +1555,6 @@ for scan_session_affinity_filestring in scan_session_affinity_filestrings:
         print("PT Root ID to Classification Mapping:")
         print(pt_root_id_to_classification)
         print(post_cell_table.set_index('pt_root_id')['classification_system'])
-
 
         # Process each row in `two_chain_results_array` to populate weights and binary connectivity
         for _, row in tqdm(enumerate(two_chain_results_array)):
@@ -2065,9 +2097,8 @@ for scan_session_affinity_filestring in scan_session_affinity_filestrings:
         # | |_/ /    | |            | \__/\  | |___   | |____  | |____    | |      | |    | |      |___ 
         # \____/     \_/             \____/  \____/   \_____/  \_____/    \_/      \_/    |_|       \____/
 
-
         A = {pt_root_id: set(mappings_a['assemblies_by_pt_root_id'][pt_root_id]) for pt_root_id in all_root_ids if 'No A' not in mappings_a['assemblies_by_pt_root_id'][pt_root_id]}
-
+        print("Initializing Chain by Cell Type Analysis Structures...")
         # Initialize DTC dictionaries to store weights and binary connectivity
         psd_volumes_PTC = {}
         psd_volumes_DTC = {}
@@ -2076,8 +2107,15 @@ for scan_session_affinity_filestring in scan_session_affinity_filestrings:
         psd_volumes_INH = {}
         psd_volumes_PYR = {}
 
+        count_DTC = 0
+        count_PTC = 0
+        count_ITC = 0
+        count_STC = 0
+        count_PYR = 0
+
+        print("Defining all potential (pre-cell, post-cell) pairs...")
         # Define all potential (pre-cell, post-cell) pairs with excitatory and inhibitory chain types bridging them
-        for j in assembly_pre_root_ids:
+        for j in tqdm(assembly_pre_root_ids):
             for i in assembly_post_root_ids:
                 if j != i:  # Exclude autapses
                     W_chain_excitatory[(j, i)] = 0
@@ -2086,12 +2124,7 @@ for scan_session_affinity_filestring in scan_session_affinity_filestrings:
                     B_chain_inhibitory[(j, i)] = 0
 
         pt_root_id_to_cell_type = post_cell_table.set_index('pt_root_id')['cell_type'].to_dict()
-
-        count_DTC = 0
-        count_PTC = 0
-        count_ITC = 0
-        count_STC = 0
-        count_PYR = 0
+        pt_root_id_to_classification = post_cell_table.set_index('pt_root_id')['classification_system'].to_dict()
 
         for connection_type in comparison_functions:
             psd_volumes_DTC[connection_type.__name__] = []
@@ -2101,29 +2134,30 @@ for scan_session_affinity_filestring in scan_session_affinity_filestrings:
             psd_volumes_INH[connection_type.__name__] = []
             psd_volumes_PYR[connection_type.__name__] = []
 
-            
-
         # Per-type unique (pre,post) pairwise summed weights and binary indicators
         _type_keys = ['PTC', 'DTC', 'ITC', 'STC', 'PYR', 'INH']
         W_chain_by_type = {k: {} for k in _type_keys}
         B_chain_by_type = {k: {} for k in _type_keys}
-        for connection_type in comparison_functions:
-            for cell_type in _type_keys:
-                W_chain_by_type[cell_type][connection_type.__name__] = {}
-                B_chain_by_type[cell_type][connection_type.__name__] = {}
-                merged_W_chain_by_type[cell_type][connection_type.__name__] = {}
-                merged_B_chain_by_type[cell_type][connection_type.__name__] = {}
+
+        # for connection_type in comparison_functions:
+        #     for cell_type in _type_keys:
+        #         W_chain_by_type[cell_type][connection_type.__name__] = {}
+        #         B_chain_by_type[cell_type][connection_type.__name__] = {}
+        #         merged_W_chain_by_type[cell_type][connection_type.__name__] = {}
+        #         merged_B_chain_by_type[cell_type][connection_type.__name__] = {}
 
         category = None
         # Process each row in `two_chain_results_array` to populate weights and binary connectivity
         for _, row in tqdm(enumerate(two_chain_results_array)):
             pre_cell, mid_cell, post_cell = row  # j: pre-cell, k: middle cell, i: post-cell
             if pre_cell in assembly_pre_root_ids and post_cell in all_root_ids:
-            # Get synapse weights for connections j -> k and k -> i
+                # print("Pre in Assemblies, post in all...")
+                # Get synapse weights for connections j -> k and k -> i
                 w_jk = summed_size_connectome_df.loc[pre_cell, mid_cell] * (9 * 9 * 45) / (10**9) # cubic micrometers
                 w_ki = summed_size_connectome_df.loc[mid_cell, post_cell] * (9 * 9 * 45) / (10**9) # cubic micrometers
             # Determine chain type (excitatory if middle cell is in excitatory set, else inhibitory)
                 if pt_root_id_to_cell_type[mid_cell] == 'PTC' or pt_root_id_to_cell_type[mid_cell] == 'ProxTC':
+                    # print("Found PTC middle cell...")
                     count_PTC += 1
                     for connection_type in comparison_functions:
                         if connection_type(pre_cell, post_cell, A):
@@ -2131,21 +2165,16 @@ for scan_session_affinity_filestring in scan_session_affinity_filestrings:
                             psd_volumes_INH[connection_type.__name__].append(w_jk * w_ki)
                             # Sum into unique pairwise aggregator for PTC and lumped INH
                             key = (pre_cell, post_cell)
-                            if key not in W_chain_by_type['PTC'][connection_type.__name__]:
-                                W_chain_by_type['PTC'][connection_type.__name__][key] = 0
-                                W_chain_by_type['INH'][connection_type.__name__][key] = 0
                             merged_key = f'{pre_cell}_{post_cell}_{scan_session_affinity_filestring}'
-                            if merged_key not in merged_W_chain_by_type['PTC'][connection_type.__name__]:
-                                merged_W_chain_by_type['PTC'][connection_type.__name__][merged_key] = 0
-                                merged_W_chain_by_type['INH'][connection_type.__name__][merged_key] = 0
-                            W_chain_by_type['PTC'][connection_type.__name__][key] += (w_jk * w_ki)
-                            merged_W_chain_by_type['PTC'][connection_type.__name__][merged_key] += (w_jk * w_ki)
-                            B_chain_by_type['PTC'][connection_type.__name__][key] = 1
-                            merged_B_chain_by_type['PTC'][connection_type.__name__][merged_key] = 1
-                            W_chain_by_type['INH'][connection_type.__name__][key] += (w_jk * w_ki)
-                            merged_W_chain_by_type['INH'][connection_type.__name__][merged_key] += (w_jk * w_ki)
-                            B_chain_by_type['INH'][connection_type.__name__][key] = 1
-                            merged_B_chain_by_type['INH'][connection_type.__name__][merged_key] = 1
+                            W_chain_by_type['PTC'][key] = W_chain_by_type['PTC'].get(key, 0) + (w_jk * w_ki)
+                            merged_W_chain_by_type['PTC'][merged_key] = merged_W_chain_by_type['PTC'].get(merged_key, 0) + (w_jk * w_ki)
+                            B_chain_by_type['PTC'][key] = 1
+                            merged_B_chain_by_type['PTC'][merged_key] = 1
+                            W_chain_by_type['INH'][key] = W_chain_by_type['INH'].get(key, 0) + (w_jk * w_ki)
+                            merged_W_chain_by_type['PTC'][merged_key] = merged_W_chain_by_type['PTC'].get(merged_key, 0) + (w_jk * w_ki)
+                            B_chain_by_type['INH'][key] = 1
+                            merged_B_chain_by_type['INH'][merged_key] = 1
+
                 if pt_root_id_to_cell_type[mid_cell] == 'ITC' or pt_root_id_to_cell_type[mid_cell] == 'InhTC':
                     count_ITC += 1
                     for connection_type in comparison_functions:
@@ -2153,21 +2182,15 @@ for scan_session_affinity_filestring in scan_session_affinity_filestrings:
                             psd_volumes_ITC[connection_type.__name__].append(w_jk * w_ki)
                             psd_volumes_INH[connection_type.__name__].append(w_jk * w_ki)
                             key = (pre_cell, post_cell)
-                            if key not in W_chain_by_type['ITC'][connection_type.__name__]:
-                                W_chain_by_type['ITC'][connection_type.__name__][key] = 0
-                                W_chain_by_type['INH'][connection_type.__name__][key] = 0
                             merged_key = f'{pre_cell}_{post_cell}_{scan_session_affinity_filestring}'
-                            if merged_key not in merged_W_chain_by_type['ITC'][connection_type.__name__]:
-                                merged_W_chain_by_type['ITC'][connection_type.__name__][merged_key] = 0
-                                merged_W_chain_by_type['INH'][connection_type.__name__][merged_key] = 0
-                            W_chain_by_type['ITC'][connection_type.__name__][key] += (w_jk * w_ki)
-                            merged_W_chain_by_type['ITC'][connection_type.__name__][merged_key] += (w_jk * w_ki)
-                            B_chain_by_type['ITC'][connection_type.__name__][key] = 1
-                            merged_B_chain_by_type['ITC'][connection_type.__name__][merged_key] = 1
-                            W_chain_by_type['INH'][connection_type.__name__][key] += (w_jk * w_ki)
-                            merged_W_chain_by_type['INH'][connection_type.__name__][merged_key] += (w_jk * w_ki)
-                            B_chain_by_type['INH'][connection_type.__name__][key] = 1
-                            merged_B_chain_by_type['INH'][connection_type.__name__][merged_key] = 1
+                            W_chain_by_type['ITC'][key] = W_chain_by_type['ITC'].get(key, 0) + (w_jk * w_ki)
+                            merged_W_chain_by_type['ITC'][merged_key] = merged_W_chain_by_type['ITC'].get(merged_key, 0) + (w_jk * w_ki)
+                            B_chain_by_type['ITC'][key] = 1
+                            merged_B_chain_by_type['ITC'][merged_key] = 1
+                            W_chain_by_type['INH'][key] = W_chain_by_type['INH'].get(key, 0) + (w_jk * w_ki)
+                            merged_W_chain_by_type['INH'][merged_key] = merged_W_chain_by_type['INH'].get(merged_key, 0) + (w_jk * w_ki)
+                            B_chain_by_type['INH'][key] = 1
+                            merged_B_chain_by_type['INH'][merged_key] = 1
                 if pt_root_id_to_cell_type[mid_cell] == 'STC' or pt_root_id_to_cell_type[mid_cell] == 'SparTC':
                     count_STC += 1
                     for connection_type in comparison_functions:
@@ -2175,21 +2198,15 @@ for scan_session_affinity_filestring in scan_session_affinity_filestrings:
                             psd_volumes_STC[connection_type.__name__].append(w_jk * w_ki)
                             psd_volumes_INH[connection_type.__name__].append(w_jk * w_ki)
                             key = (pre_cell, post_cell)
-                            if key not in W_chain_by_type['STC'][connection_type.__name__]:
-                                W_chain_by_type['STC'][connection_type.__name__][key] = 0
-                                W_chain_by_type['INH'][connection_type.__name__][key] = 0
                             merged_key = f'{pre_cell}_{post_cell}_{scan_session_affinity_filestring}'
-                            if merged_key not in merged_W_chain_by_type['STC'][connection_type.__name__]:
-                                merged_W_chain_by_type['STC'][connection_type.__name__][merged_key] = 0
-                                merged_W_chain_by_type['INH'][connection_type.__name__][merged_key] = 0
-                            W_chain_by_type['STC'][connection_type.__name__][key] += (w_jk * w_ki)
-                            merged_W_chain_by_type['STC'][connection_type.__name__][merged_key] += (w_jk * w_ki)
-                            B_chain_by_type['STC'][connection_type.__name__][key] = 1
-                            merged_B_chain_by_type['STC'][connection_type.__name__][merged_key] = 1
-                            W_chain_by_type['INH'][connection_type.__name__][key] += (w_jk * w_ki)
-                            merged_W_chain_by_type['INH'][connection_type.__name__][merged_key] += (w_jk * w_ki)
-                            B_chain_by_type['INH'][connection_type.__name__][key] = 1
-                            merged_B_chain_by_type['INH'][connection_type.__name__][merged_key] = 1
+                            W_chain_by_type['STC'][key] = W_chain_by_type['STC'].get(key, 0) + (w_jk * w_ki)
+                            merged_W_chain_by_type['STC'][merged_key] = merged_W_chain_by_type['STC'].get(merged_key, 0) + (w_jk * w_ki)
+                            B_chain_by_type['STC'][key] = 1
+                            merged_B_chain_by_type['STC'][merged_key] = 1
+                            W_chain_by_type['INH'][key] = W_chain_by_type['INH'].get(key, 0) + (w_jk * w_ki)
+                            merged_W_chain_by_type['INH'][merged_key] = merged_W_chain_by_type['INH'].get(merged_key, 0) + (w_jk * w_ki)
+                            B_chain_by_type['INH'][key] = 1
+                            merged_B_chain_by_type['INH'][merged_key] = 1
                 if pt_root_id_to_cell_type[mid_cell] == 'DTC' or pt_root_id_to_cell_type[mid_cell] == 'DistTC':
                     count_DTC += 1
                     for connection_type in comparison_functions:
@@ -2197,37 +2214,26 @@ for scan_session_affinity_filestring in scan_session_affinity_filestrings:
                             psd_volumes_DTC[connection_type.__name__].append(w_jk * w_ki)
                             psd_volumes_INH[connection_type.__name__].append(w_jk * w_ki)
                             key = (pre_cell, post_cell)
-                            if key not in W_chain_by_type['DTC'][connection_type.__name__]:
-                                W_chain_by_type['DTC'][connection_type.__name__][key] = 0
-                                W_chain_by_type['INH'][connection_type.__name__][key] = 0
                             merged_key = f'{pre_cell}_{post_cell}_{scan_session_affinity_filestring}'
-                            if merged_key not in merged_W_chain_by_type['DTC'][connection_type.__name__]:
-                                merged_W_chain_by_type['DTC'][connection_type.__name__][merged_key] = 0
-                                merged_W_chain_by_type['INH'][connection_type.__name__][merged_key] = 0
-                            W_chain_by_type['DTC'][connection_type.__name__][key] += (w_jk * w_ki)
-                            merged_W_chain_by_type['DTC'][connection_type.__name__][merged_key] += (w_jk * w_ki)
-                            B_chain_by_type['DTC'][connection_type.__name__][key] = 1
-                            merged_B_chain_by_type['DTC'][connection_type.__name__][merged_key] = 1
-                            W_chain_by_type['INH'][connection_type.__name__][key] += (w_jk * w_ki)
-                            merged_W_chain_by_type['INH'][connection_type.__name__][merged_key] += (w_jk * w_ki)
-                            B_chain_by_type['INH'][connection_type.__name__][key] = 1
-                            merged_B_chain_by_type['INH'][connection_type.__name__][merged_key] = 1
+                            W_chain_by_type['DTC'][key] = W_chain_by_type['DTC'].get(key, 0) + (w_jk * w_ki)
+                            merged_W_chain_by_type['DTC'][merged_key] = merged_W_chain_by_type['DTC'].get(merged_key, 0) + (w_jk * w_ki)
+                            B_chain_by_type['DTC'][key] = 1
+                            merged_B_chain_by_type['DTC'][merged_key] = 1
+                            W_chain_by_type['INH'][key] = W_chain_by_type['INH'].get(key, 0) + (w_jk * w_ki)
+                            merged_W_chain_by_type['INH'][merged_key] = merged_W_chain_by_type['INH'].get(merged_key, 0) + (w_jk * w_ki)
+                            B_chain_by_type['INH'][key] = 1
+                            merged_B_chain_by_type['INH'][merged_key] = 1
                 elif pt_root_id_to_cell_type[mid_cell][0] == 'L' or pt_root_id_to_cell_type[mid_cell][1] == 'P':
                     count_PYR += 1
                     for connection_type in comparison_functions:
                         if connection_type(pre_cell, post_cell, A):
                             psd_volumes_PYR[connection_type.__name__].append(w_jk * w_ki)
                             key = (pre_cell, post_cell)
-                            if key not in W_chain_by_type['PYR'][connection_type.__name__]:
-                                W_chain_by_type['PYR'][connection_type.__name__][key] = 0
                             merged_key = f'{pre_cell}_{post_cell}_{scan_session_affinity_filestring}'
-                            if merged_key not in merged_W_chain_by_type['PYR'][connection_type.__name__]:
-                                merged_W_chain_by_type['PYR'][connection_type.__name__][merged_key] = 0
-                            W_chain_by_type['PYR'][connection_type.__name__][key] += (w_jk * w_ki)
-                            merged_W_chain_by_type['PYR'][connection_type.__name__][merged_key] += (w_jk * w_ki)
-                            B_chain_by_type['PYR'][connection_type.__name__][key] = 1
-                            merged_B_chain_by_type['PYR'][connection_type.__name__][merged_key] = 1
-            
+                            W_chain_by_type['PYR'][key] = W_chain_by_type['PYR'].get(key, 0) + (w_jk * w_ki)
+                            merged_W_chain_by_type['PYR'][merged_key] = merged_W_chain_by_type['PYR'].get(merged_key, 0) + (w_jk * w_ki)
+                            B_chain_by_type['PYR'][key] = 1
+                            merged_B_chain_by_type['PYR'][merged_key] = 1
             # # Updates weights and binary connectivity
             #     W_chain[(pre_cell, post_cell)] += (w_jk * w_ki)s
             #     B_chain[(pre_cell, post_cell)] = 1
@@ -2258,27 +2264,42 @@ for scan_session_affinity_filestring in scan_session_affinity_filestrings:
         # optional: also print to console
         print(f"Saved counts to {out_path}")
 
-        for connection_type in comparison_functions:
-            psd_volumes_DTC[connection_type.__name__] = np.array(psd_volumes_DTC[connection_type.__name__])
-            psd_volumes_PTC[connection_type.__name__] = np.array(psd_volumes_PTC[connection_type.__name__])
-            psd_volumes_ITC[connection_type.__name__] = np.array(psd_volumes_ITC[connection_type.__name__])
-            psd_volumes_STC[connection_type.__name__] = np.array(psd_volumes_STC[connection_type.__name__])
-            psd_volumes_INH[connection_type.__name__] = np.array(psd_volumes_INH[connection_type.__name__])
-            psd_volumes_PYR[connection_type.__name__] = np.array(psd_volumes_PYR[connection_type.__name__])
+        # for connection_type in comparison_functions:
+        #     psd_volumes_DTC[connection_type.__name__] = np.array(psd_volumes_DTC[connection_type.__name__])
+        #     psd_volumes_PTC[connection_type.__name__] = np.array(psd_volumes_PTC[connection_type.__name__])
+        #     psd_volumes_ITC[connection_type.__name__] = np.array(psd_volumes_ITC[connection_type.__name__])
+        #     psd_volumes_STC[connection_type.__name__] = np.array(psd_volumes_STC[connection_type.__name__])
+        #     psd_volumes_INH[connection_type.__name__] = np.array(psd_volumes_INH[connection_type.__name__])
+        #     psd_volumes_PYR[connection_type.__name__] = np.array(psd_volumes_PYR[connection_type.__name__])
 
         # Build per-type pairwise nonzero (summed) & binary dictionaries keyed by connection type name
         W_chain_nonzero_pairwise_by_type = {tk: {} for tk in W_chain_by_type.keys()}
         B_chain_pairwise_by_type = {tk: {} for tk in W_chain_by_type.keys()}
+        for tk in merged_W_chain_by_type.keys():
+            if tk not in merged_W_chain_nonzero_pairwise_by_type:
+                merged_W_chain_nonzero_pairwise_by_type[tk] = {}
+                for cond_function in comparison_functions:
+                    name = cond_function.__name__
+                    merged_W_chain_nonzero_pairwise_by_type[tk][name] = {}
+            if tk not in merged_B_chain_pairwise_by_type:
+                merged_B_chain_pairwise_by_type[tk] = {}
+                for cond_function in comparison_functions:
+                    name = cond_function.__name__
+                    merged_B_chain_pairwise_by_type[tk][name] = {}
         for cond_function in comparison_functions:
             name = cond_function.__name__
+            print(f'processing {name}')
             for tk in W_chain_by_type.keys():
                 W_chain_nonzero_pairwise_by_type[tk][name] = {}
                 B_chain_pairwise_by_type[tk][name] = {}
-                for (j, i), w in W_chain_by_type[tk][name].items():
+                for (j, i), w in W_chain_by_type[tk].items():
                     if cond_function(j, i, A):
                         B_chain_pairwise_by_type[tk][name][(j, i)] = 1 if w > 0 else 0
+                        merged_B_chain_pairwise_by_type[tk][name][f'{j}_{i}_{scan_session_affinity_filestring}'] = 1 if w > 0 else 0
                         if w > 0:
                             W_chain_nonzero_pairwise_by_type[tk][name][(j, i)] = w
+                            merged_W_chain_nonzero_pairwise_by_type[tk][name][f'{j}_{i}_{scan_session_affinity_filestring}'] = w
+                            print(f'\tSetting weight for merged_W_chain_nonzero_pairwise_by_type[{tk}][{name}][{j}_{i}_{scan_session_affinity_filestring}]')
 
         # Diagnostic: show unique (pre,post) counts for each middle-type (summed pairs)
         print('\nPer-type unique (pre,post) nonzero connection counts:')
@@ -2347,56 +2368,32 @@ for scan_session_affinity_filestring in scan_session_affinity_filestrings:
                                                 )
         
         if merge_count == len(scan_session_affinity_filestrings):
-            print("Saving and Plotting Chain Connection Sets by Cell Type")
+            print("Processing Merged Chain Connection Sets by Cell Type")
+            # print("Saving and Plotting Chain Connection Sets by Cell Type")
             save_folder = 'master_freeze_produced_sets/chain_connections/'
             with open(f"{save_folder}{run_descriptor}W_chain_nonzero_pairwise_by_type_{output_string}_Merged{merged_filestring}.pkl", "wb") as f:
                 pickle.dump(W_chain_by_type, f)
             with open(f"{save_folder}{run_descriptor}B_chain_pairwise_by_type_{output_string}_Merged{merged_filestring}.pkl", "wb") as f:
                 pickle.dump(B_chain_by_type, f)
 
-            print("Middle Cell Type Distribution")
-            print('Count PTC:', count_PTC)
-            print('Count DTC:', count_DTC)
-            print('Count ITC:', count_ITC)
-            print('Count STC:', count_STC)
-            print('Count PYR:', count_PYR)
-            # overwrite file (use 'a' to append)
-            out_path = f"./draft_figures/middle_cell_type_counts_SquareChain_{params_a['run_descriptor']}_{output_string}_Merged{merged_filestring}.txt"
-            with open(out_path, "w") as f:
-                print("Middle Cell Type Distribution", file=f)
-                print(f"Count PTC: {count_PTC}", file=f)
-                print(f"Count DTC: {count_DTC}", file=f)
-                print(f"Count ITC: {count_ITC}", file=f)
-                print(f"Count STC: {count_STC}", file=f)
-                print(f"Count PYR: {count_PYR}", file=f)
+            # print("Middle Cell Type Distribution")
+            # print('Count PTC:', count_PTC)
+            # print('Count DTC:', count_DTC)
+            # print('Count ITC:', count_ITC)
+            # print('Count STC:', count_STC)
+            # print('Count PYR:', count_PYR)
+            # # overwrite file (use 'a' to append)
+            # out_path = f"./draft_figures/middle_cell_type_counts_SquareChain_{params_a['run_descriptor']}_{output_string}_Merged{merged_filestring}.txt"
+            # with open(out_path, "w") as f:
+            #     print("Middle Cell Type Distribution", file=f)
+            #     print(f"Count PTC: {count_PTC}", file=f)
+            #     print(f"Count DTC: {count_DTC}", file=f)
+            #     print(f"Count ITC: {count_ITC}", file=f)
+            #     print(f"Count STC: {count_STC}", file=f)
+            #     print(f"Count PYR: {count_PYR}", file=f)
 
-            # optional: also print to console
-            print(f"Saved counts to {out_path}")
-
-            for connection_type in comparison_functions:
-                psd_volumes_DTC[connection_type.__name__] = np.array(psd_volumes_DTC[connection_type.__name__])
-                psd_volumes_PTC[connection_type.__name__] = np.array(psd_volumes_PTC[connection_type.__name__])
-                psd_volumes_ITC[connection_type.__name__] = np.array(psd_volumes_ITC[connection_type.__name__])
-                psd_volumes_STC[connection_type.__name__] = np.array(psd_volumes_STC[connection_type.__name__])
-                psd_volumes_INH[connection_type.__name__] = np.array(psd_volumes_INH[connection_type.__name__])
-                psd_volumes_PYR[connection_type.__name__] = np.array(psd_volumes_PYR[connection_type.__name__])
-
-            # Build per-type pairwise nonzero (summed) & binary dictionaries keyed by connection type name
-            merged_W_chain_nonzero_pairwise_by_type = {tk: {} for tk in merged_W_chain_by_type.keys()}
-            merged_B_chain_pairwise_by_type = {tk: {} for tk in merged_W_chain_by_type.keys()}
-            for cond_function in comparison_functions:
-                name = cond_function.__name__
-                for tk in merged_W_chain_by_type.keys():
-                    merged_W_chain_nonzero_pairwise_by_type[tk][name] = {}
-                    merged_B_chain_pairwise_by_type[tk][name] = {}
-                    for key, w in merged_W_chain_by_type[tk][name].items():
-                        j, i = key.split('_')[:2]
-                        j = int(j)
-                        i = int(i)
-                        if cond_function(j, i, A):
-                            merged_B_chain_pairwise_by_type[tk][name][key] = 1 if w > 0 else 0
-                            if w > 0:
-                                merged_W_chain_nonzero_pairwise_by_type[tk][name][key] = w
+            # # optional: also print to console
+            # print(f"Saved counts to {out_path}")
 
             # Diagnostic: show unique (pre,post) counts for each middle-type (summed pairs)
             print('\nPer-type unique (pre,post) nonzero connection counts:')
@@ -2404,6 +2401,7 @@ for scan_session_affinity_filestring in scan_session_affinity_filestrings:
                 total_pairs = sum(len(v) for v in merged_W_chain_nonzero_pairwise_by_type[tk].values())
                 print(f"  {tk}: total_unique_nonzero_pairs={total_pairs}")
 
+            print(f'Plotting merged_W_chain_nonzero_pairwise_by_type')
             ranksum_signedrank_two_group_comparison(merged_W_chain_nonzero_pairwise_by_type['PTC'],
                                                     aggregation_method='connection',
                                                     data_type='summed_psd',
