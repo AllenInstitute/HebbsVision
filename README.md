@@ -30,8 +30,7 @@ https://www.biorxiv.org/content/10.1101/2025.04.24.649900v2
 
 If you use this code or data, please cite:
 
-> Wagner-Carena, J., Kate, S., Riordan, T., *et al.* *The Structural Underpinnings of
-> Neuronal Assemblies.* bioRxiv 2025.04.24.649900.
+> Wagner-Carena, J., Kate, S., Riordan, T., *et al.* *Hebb's Vision: The Structural Underpinnings of Hebbian Assemblies* bioRxiv 2025.04.24.649900.
 > https://doi.org/10.1101/2025.04.24.649900
 
 ## License
