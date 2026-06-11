@@ -1,7 +1,7 @@
 # The Structural Underpinnings of Neuronal Assemblies
 
-Data and analysis code for the manuscript *The Structural Underpinnings of Neuronal
-Assemblies* (Wagner-Carena et al., Allen Institute). This repository is also referred
+Data and analysis code for the manuscript *Hebb's Vision: The Structural 
+Underpinnings of Hebbian Assemblies* (Wagner-Carena et al., Allen Institute). This repository is also referred
 to informally as **"Hebb's Vision."**
 
 ## Overview
