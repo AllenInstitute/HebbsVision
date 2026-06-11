@@ -1,5 +1,7 @@
 # The Structural Underpinnings of Neuronal Assemblies
 
+[![DOI](https://zenodo.org/badge/902162245.svg)](https://doi.org/10.5281/zenodo.20635866)
+
 Data and analysis code for the manuscript *Hebb's Vision: The Structural 
 Underpinnings of Hebbian Assemblies* (Wagner-Carena et al., Allen Institute). This repository is also referred
 to informally as **"Hebb's Vision."**
