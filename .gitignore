@@ -1,0 +1,15 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+
+# Editor / IDE
+.vscode/
+
+# Large raw data (a duplicate of the LFS-tracked root data_files/ — must not be committed)
+FigureCode/Figure4/data_files/
+FigureCode/**/data_files_backup/

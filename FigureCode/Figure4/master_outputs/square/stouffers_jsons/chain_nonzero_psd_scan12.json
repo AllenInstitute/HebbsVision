@@ -1,0 +1,44 @@
+[
+  {
+    "chain_type": "excitatory",
+    "p_value": 0.34624011167939583,
+    "alternative": "greater",
+    "n_shared": 46,
+    "n_disjoint": 241
+  },
+  {
+    "chain_type": "inhibitory",
+    "p_value": 0.7741599345803387,
+    "alternative": "less",
+    "n_shared": 295,
+    "n_disjoint": 1849
+  },
+  {
+    "chain_type": "DistTC",
+    "p_value": 0.6299638725287277,
+    "alternative": "less",
+    "n_shared": 294,
+    "n_disjoint": 1842
+  },
+  {
+    "chain_type": "InhTC",
+    "p_value": 0.6846718802371721,
+    "alternative": "less",
+    "n_shared": 9,
+    "n_disjoint": 84
+  },
+  {
+    "chain_type": "ProxTC",
+    "p_value": 0.7462743259923015,
+    "alternative": "less",
+    "n_shared": 279,
+    "n_disjoint": 1756
+  },
+  {
+    "chain_type": "SparTC",
+    "p_value": 0.9011654004199117,
+    "alternative": "less",
+    "n_shared": 5,
+    "n_disjoint": 35
+  }
+]
